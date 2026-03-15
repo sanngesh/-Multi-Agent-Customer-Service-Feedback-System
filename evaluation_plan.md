@@ -74,11 +74,12 @@ This evaluation plan provides a structured rubric and methodology for assessing 
 ## Evaluation Methodology
 
 ### Automated Checks
-The pipeline's Quality Verifier agent (Agent 3) performs automated checks during generation:
+The pipeline's Evaluation Agent (Agent 3) performs strict logic checks and rubric-based numeric scoring (via Pydantic structured outputs). It enforces a minimum passing score of 85/100 before approval, evaluating:
 - Transcript accuracy (exact matching of quoted statements)
 - Explanation quality (sentence count, category language usage)
 - Alternative quality (PII check, overpromising check, substantive difference)
-- Completeness (missing statements detection)
+- Completeness (missing statement detection)
+- Rubric scoring (correctness, completeness, clarity, format, usefulness)
 
 ### Manual Review Checklist
 After generation, the human reviewer should verify:

@@ -30,7 +30,7 @@ BASE_DIR = Path(__file__).parent
 TRANSCRIPTS_DIR = BASE_DIR / "transcripts"
 OUTPUT_PATH = BASE_DIR / "Case Feedback.docx"
 NOTES_LOG_PATH = BASE_DIR / "notes_log.md"
-MAX_VERIFICATION_RETRIES = 3
+MAX_VERIFICATION_RETRIES = 5
 MIN_PASSING_SCORE = 85
 MODEL = "gpt-4o"
 
