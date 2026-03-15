@@ -10,7 +10,26 @@ The system processes three customer service chat transcripts (Case One, Case Two
 
 The solution employs a four-agent pipeline orchestrated by a central controller (`main.py`). Each agent is a specialised Python class with a well-defined responsibility:
 
-![alt text](image.png)
+```mermaid
+flowchart TD
+    A[Raw Transcript File] -->|Ingest| B(Agent 1: Case Analyzer)
+    B -->|Flag Problematic Statements| C(Agent 2: Feedback Generator)
+    
+    C -->|Draft Expanations &\n Alternatives| D{Agent 3: Evaluation Agent}
+    
+    D -.->|Fails Verification:<br>Return Corrections| C
+    
+    D -->|Passes Verification| E(Agent 4: Document Compiler)
+    D -->|Also Computes:<br>100-pt Feedback Score| F[Console Output/Logs]
+    
+    E -->|Format using python-docx| G[Case Feedback.docx]
+    
+    style B fill:#e1f5fe,stroke:#01579b
+    style C fill:#f3e5f5,stroke:#4a148c
+    style D fill:#e8f5e9,stroke:#1b5e20
+    style E fill:#fff3e0,stroke:#e65100
+    style G fill:#fbe9e7,stroke:#bf360c,stroke-width:2px
+```
 
 **Agent 1 — Case Analyzer** ingests the raw transcript text and uses GPT-4o with a carefully engineered system prompt to identify problematic statements made exclusively by the representative. The prompt defines seven evaluation categories: tone, clarity, empathy, grammar and spelling, professionalism, problem resolution, and accuracy. The model is instructed to quote statements verbatim — preserving typos, emoticons, and casing — and to return structured JSON. A low temperature of 0.2 ensures deterministic, focused output.
 
