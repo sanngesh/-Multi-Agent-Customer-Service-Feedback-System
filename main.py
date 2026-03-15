@@ -31,6 +31,7 @@ TRANSCRIPTS_DIR = BASE_DIR / "transcripts"
 OUTPUT_PATH = BASE_DIR / "Case Feedback.docx"
 NOTES_LOG_PATH = BASE_DIR / "notes_log.md"
 MAX_VERIFICATION_RETRIES = 3
+MIN_PASSING_SCORE = 85
 MODEL = "gpt-4o"
 
 CASE_FILES = {
@@ -66,6 +67,7 @@ def save_notes_log():
         f.write("## System Configuration\n\n")
         f.write(f"- **Model**: `{MODEL}`\n")
         f.write(f"- **Max Verification Retries**: {MAX_VERIFICATION_RETRIES}\n")
+        f.write(f"- **Min Passing Score**: {MIN_PASSING_SCORE}/100\n")
         f.write(f"- **Output**: `{OUTPUT_PATH.name}`\n\n")
         f.write("## Pipeline Steps\n\n")
 
@@ -154,29 +156,39 @@ def main():
             print(f"✅ Agent 3 (Evaluation Agent) checking {case_name} (attempt {attempt}/{MAX_VERIFICATION_RETRIES})...")
             verification = verifier.verify(feedback, transcript_text, case_name)
 
-            approved = verification.get("approved", False)
-            issues = verification.get("issues_found", [])
-            missing = verification.get("missing_statements", [])
-            agent_score = verification.get("agent_score", "N/A")
-            score_justification = verification.get("score_justification", "N/A")
+            total_score = verification.llm_feedback_scores.total
+            
+            # The feedback is approved ONLY if it passed all logic checks AND scored above the minimum passing score
+            approved = verification.approved and total_score >= MIN_PASSING_SCORE
+            
+            issues = [issue.model_dump() for issue in verification.issues_found]
+            missing = [m.model_dump() for m in verification.missing_statements]
+            agent_scores = verification.llm_feedback_scores.model_dump()
+            score_justification = verification.score_justification
 
-            # Only print agent performance score on the final approved (or exhausted) attempt
-            # to avoid cluttering, though we log it every time.
             if approved or attempt == MAX_VERIFICATION_RETRIES:
-                print(f"   📊 Representative Performance Target Score: {agent_score}/100")
+                print(f"   📊 AI Feedback Generator Output Score: {total_score}/100")
+                print(f"      - Correctness: {agent_scores.get('correctness', 'N/A')}/25")
+                print(f"      - Completeness: {agent_scores.get('completeness', 'N/A')}/20")
+                print(f"      - Clarity: {agent_scores.get('clarity', 'N/A')}/15")
+                print(f"      - Format/Style: {agent_scores.get('format_style', 'N/A')}/20")
+                print(f"      - Usefulness: {agent_scores.get('usefulness', 'N/A')}/20")
                 print(f"      Reasoning: {score_justification}")
+                
+                if total_score < MIN_PASSING_SCORE and attempt < MAX_VERIFICATION_RETRIES:
+                    print(f"   ⚠️ Score {total_score} is below passing threshold {MIN_PASSING_SCORE}. Retrying...")
 
             log(
                 f"Agent 3 — Evaluation Agent (Attempt {attempt})",
                 f"{case_name}: {'✅ APPROVED' if approved else '❌ NEEDS REVISION'} — "
                 f"{len(issues)} issue(s), {len(missing)} missing statement(s).\n"
-                f"Score given to Rep: {agent_score}/100 - {score_justification}",
+                f"Evaluation of LLM Output: {total_score}/100 - {score_justification}",
                 {
                     "case": case_name,
                     "approved": approved,
-                    "agent_score": agent_score,
+                    "agent_scores": agent_scores,
                     "score_justification": score_justification,
-                    "quality": verification.get("overall_quality", "unknown"),
+                    "quality": verification.overall_quality,
                     "issues_count": len(issues),
                     "missing_count": len(missing),
                     "issues_summary": [i.get("description", "")[:100] for i in issues],
@@ -195,6 +207,12 @@ def main():
             # Re-generate with corrections
             print(f"   🔄 Re-generating feedback for {case_name} with corrections...")
             corrections = issues + [{"issue_type": "missing", "description": m.get("reason", ""), "suggested_fix": f"Add feedback for: {m.get('statement', '')}"} for m in missing]
+            if not verification.approved and total_score < MIN_PASSING_SCORE:
+                corrections.append({
+                    "issue_type": "low_score", 
+                    "description": f"The overall feedback score was {total_score}/100 (needs {MIN_PASSING_SCORE}). Deficiencies: {score_justification}", 
+                    "suggested_fix": "Improve the overall quality of the explanations and alternatives based on the provided justification."
+                })
 
             feedback = generator.generate(
                 analysis, transcript_text, case_name, corrections=corrections
