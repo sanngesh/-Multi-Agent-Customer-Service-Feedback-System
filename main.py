@@ -4,7 +4,7 @@ Multi-Agent Customer Service Feedback System — Orchestrator
 Coordinates the 4-agent pipeline:
   1. Case Analyzer → identifies problematic statements via LLM
   2. Feedback Generator → produces explanations + alternatives via LLM
-  3. Quality Verifier → cross-checks accuracy, triggers re-generation if needed
+  3. Evaluation Agent → cross-checks accuracy, triggers re-generation if needed
   4. Document Compiler → assembles final Word document
 
 Usage:
@@ -22,7 +22,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from agents import CaseAnalyzer, FeedbackGenerator, QualityVerifier, DocumentCompiler
+from agents import CaseAnalyzer, FeedbackGenerator, EvaluationAgent, DocumentCompiler
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ BASE_DIR = Path(__file__).parent
 TRANSCRIPTS_DIR = BASE_DIR / "transcripts"
 OUTPUT_PATH = BASE_DIR / "Case Feedback.docx"
 NOTES_LOG_PATH = BASE_DIR / "notes_log.md"
-MAX_VERIFICATION_RETRIES = 2
+MAX_VERIFICATION_RETRIES = 3
 MODEL = "gpt-4o"
 
 CASE_FILES = {
@@ -108,10 +108,10 @@ def main():
     # Initialize agents
     analyzer = CaseAnalyzer(client, model=MODEL)
     generator = FeedbackGenerator(client, model=MODEL)
-    verifier = QualityVerifier(client, model=MODEL)
+    verifier = EvaluationAgent(client, model=MODEL)
     compiler = DocumentCompiler()
 
-    log("Setup", "All 4 agents initialized: CaseAnalyzer, FeedbackGenerator, QualityVerifier, DocumentCompiler")
+    log("Setup", "All 4 agents initialized: CaseAnalyzer, FeedbackGenerator, EvaluationAgent, DocumentCompiler")
 
     all_feedback = {}
 
@@ -149,22 +149,33 @@ def main():
             },
         )
 
-        # ── Agent 3: Quality Verifier (with retry loop) ──────────────────
+        # ── Agent 3: Evaluation Agent (with retry loop) ──────────────────
         for attempt in range(1, MAX_VERIFICATION_RETRIES + 1):
-            print(f"✅ Agent 3 (Quality Verifier) checking {case_name} (attempt {attempt}/{MAX_VERIFICATION_RETRIES})...")
+            print(f"✅ Agent 3 (Evaluation Agent) checking {case_name} (attempt {attempt}/{MAX_VERIFICATION_RETRIES})...")
             verification = verifier.verify(feedback, transcript_text, case_name)
 
             approved = verification.get("approved", False)
             issues = verification.get("issues_found", [])
             missing = verification.get("missing_statements", [])
+            agent_score = verification.get("agent_score", "N/A")
+            score_justification = verification.get("score_justification", "N/A")
+
+            # Only print agent performance score on the final approved (or exhausted) attempt
+            # to avoid cluttering, though we log it every time.
+            if approved or attempt == MAX_VERIFICATION_RETRIES:
+                print(f"   📊 Representative Performance Target Score: {agent_score}/100")
+                print(f"      Reasoning: {score_justification}")
 
             log(
-                f"Agent 3 — Quality Verifier (Attempt {attempt})",
+                f"Agent 3 — Evaluation Agent (Attempt {attempt})",
                 f"{case_name}: {'✅ APPROVED' if approved else '❌ NEEDS REVISION'} — "
-                f"{len(issues)} issue(s), {len(missing)} missing statement(s).",
+                f"{len(issues)} issue(s), {len(missing)} missing statement(s).\n"
+                f"Score given to Rep: {agent_score}/100 - {score_justification}",
                 {
                     "case": case_name,
                     "approved": approved,
+                    "agent_score": agent_score,
+                    "score_justification": score_justification,
                     "quality": verification.get("overall_quality", "unknown"),
                     "issues_count": len(issues),
                     "missing_count": len(missing),
@@ -176,7 +187,7 @@ def main():
                 if not approved:
                     print(f"   ⚠️  Max retries reached for {case_name}. Using best available output.")
                     log(
-                        "Agent 3 — Quality Verifier",
+                        "Agent 3 — Evaluation Agent",
                         f"Max retries reached for {case_name}. Proceeding with current output.",
                     )
                 break

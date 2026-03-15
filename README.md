@@ -23,7 +23,7 @@ The system is orchestrated by `main.py` which manages a sequential four-agent pi
 - **Constraints:** Prohibited from introducing new Personally Identifiable Information (PII) or overpromising outcomes beyond the representative's control.
 - **Temperature:** 0.3 (Balances consistency with the creativity needed for alternative generation)
 
-### Agent 3 — Quality Verifier (`agents/quality_verifier.py`)
+### Agent 3 — Evaluation Agent (`agents/evaluation_agent.py`)
 - **Role:** Quality Assurance & Human Performance Evaluation
 - **Task 1 (Agent Validation):** Verifies Agent 2's output by checking transcript accuracy (character matches), explanation quality (length, terminology), alternative quality (PII/overpromise checks), and professional tone.
 - **Task 2 (Human Evaluation):** Computes a numeric `agent_score` (0-100) and `score_justification` representing the human representative's actual performance.
@@ -44,12 +44,12 @@ flowchart TD
     A[Raw Transcript File] -->|Ingest| B(Agent 1: Case Analyzer)
     B -->|Flag Problematic Statements| C(Agent 2: Feedback Generator)
     
-    C -->|Draft Expanations &\n Alternatives| D{Agent 3: \nQuality Verifier}
+    C -->|Draft Expanations &\n Alternatives| D{Agent 3: Evaluation Agent}
     
-    D -.->|Fails Verification:\nReturn Corrections| C
+    D -.->|Fails Verification:<br>Return Corrections| C
     
     D -->|Passes Verification| E(Agent 4: Document Compiler)
-    D -->|Also Computes:\n100-pt Agent Score| F[Console Output/Logs]
+    D -->|Also Computes:<br>100-pt Agent Score| F[Console Output/Logs]
     
     E -->|Format using python-docx| G[Case Feedback.docx]
     

@@ -2,12 +2,12 @@
 
 from .case_analyzer import CaseAnalyzer
 from .feedback_generator import FeedbackGenerator
-from .quality_verifier import QualityVerifier
+from .evaluation_agent import EvaluationAgent
 from .document_compiler import DocumentCompiler
 
 __all__ = [
     "CaseAnalyzer",
     "FeedbackGenerator",
-    "QualityVerifier",
+    "EvaluationAgent",
     "DocumentCompiler",
 ]
