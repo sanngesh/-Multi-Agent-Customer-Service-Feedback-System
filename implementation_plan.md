@@ -37,7 +37,32 @@ The system is orchestrated by `main.py` which manages a sequential four-agent pi
 
 ---
 
-## 2. Data Flow Pipeline
+## 2. Visual Architecture Diagram
+
+```mermaid
+flowchart TD
+    A[Raw Transcript File] -->|Ingest| B(Agent 1: Case Analyzer)
+    B -->|Flag Problematic Statements| C(Agent 2: Feedback Generator)
+    
+    C -->|Draft Expanations &\n Alternatives| D{Agent 3: \nQuality Verifier}
+    
+    D -.->|Fails Verification:\nReturn Corrections| C
+    
+    D -->|Passes Verification| E(Agent 4: Document Compiler)
+    D -->|Also Computes:\n100-pt Agent Score| F[Console Output/Logs]
+    
+    E -->|Format using python-docx| G[Case Feedback.docx]
+    
+    style B fill:#e1f5fe,stroke:#01579b
+    style C fill:#f3e5f5,stroke:#4a148c
+    style D fill:#e8f5e9,stroke:#1b5e20
+    style E fill:#fff3e0,stroke:#e65100
+    style G fill:#fbe9e7,stroke:#bf360c,stroke-width:2px
+```
+
+---
+
+## 3. Data Flow Pipeline
 
 1. **Initialization:**
    - `main.py` loads environment variables (`OPENAI_API_KEY`).
