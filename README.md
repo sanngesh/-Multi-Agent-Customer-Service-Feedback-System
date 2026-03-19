@@ -1,7 +1,7 @@
 # Implementation Plan: Multi-Agent Customer Service Feedback System
 
 ## Overview
-This implementation plan outlines the architecture, data flow, and processing strategy for the **Multi-Agent Customer Service Feedback System**. The system automates the evaluation of bank customer service chat transcripts, generated tailored feedback, verifies it against strict quality standards, and compiles the results into a professional Word document.
+This implementation plan outlines the architecture, data flow, processing, and evaluation strategy for the **Multi-Agent Customer Service Feedback System**. The system automates the evaluation of bank customer service chat transcripts, generated tailored feedback, verifies it against strict quality standards, and compiles the results into a professional Word document.
 
 ---
 
@@ -82,20 +82,129 @@ flowchart TD
 
 ---
 
-## 3. Evaluation & Quality Metrics
+## 4. Evaluation & Quality Metrics
 
-The system's final output is evaluated against a predefined, 100-point rubric located in `evaluation_plan.md`:
+The system's final output is evaluated against a predefined, 100-point rubric.
 - **Correctness (25pts):** Verbatim matching and accurate issue identification.
 - **Completeness (20pts):** Coverage across all three cases and required layout components.
 - **Clarity (15pts):** Clear explanations and natural-sounding alternatives.
 - **Format (20pts):** Strict adherence to `.docx` formatting constraints (1.5 spacing, bold headers, 5-page limit).
 - **Usefulness (20pts):** Actionability and correct professional tone for the banking domain.
 
+### 4.1. Correctness (25 points)
+
+| Criterion | Points | Description |
+|-----------|--------|-------------|
+| Quoted originals match transcript | 5 | Every "Original Statement" cited in the document must appear verbatim in the corresponding case transcript as a representative (Support) line |
+| Explanations identify real issues | 5 | Each explanation must correctly identify why the statement is problematic — not merely restate the original |
+| Alternatives are appropriate | 5 | Alternatives must fix the identified issue without introducing new PII, overpromising, or creating new problems |
+| No false attributions | 5 | No customer statements should be flagged as representative statements |
+| Key statements identified | 5 | All obviously problematic statements from each case are captured (no significant omissions) |
+
+### 4.2 Completeness (20 points)
+
+| Criterion | Points | Description |
+|-----------|--------|-------------|
+| All three cases covered | 6 | Document contains feedback sections for Case One, Case Two, and Case Three |
+| Three components per item | 6 | Every feedback item includes all three parts: Original Statement, Explanation, and Alternative |
+| Sufficient coverage per case | 4 | Each case has at least 3 problematic statements identified |
+| Category language used | 4 | Explanations use category terms (tone, empathy, clarity, grammar, professionalism, etc.) |
+
+### 4.3. Clarity (15 points)
+
+| Criterion | Points | Description |
+|-----------|--------|-------------|
+| Explanations are clear | 5 | Explanations are easy to understand and directly address the issue |
+| Explanations are concise | 5 | Each explanation is 1–3 sentences (not overly verbose) |
+| Alternatives read naturally | 5 | Alternative statements fit naturally in the conversation context |
+
+### 4.4. Format (20 points)
+
+| Criterion | Points | Description |
+|-----------|--------|-------------|
+| Word .docx format | 3 | Deliverable is a single .docx file |
+| Title is "Case Feedback" | 3 | Document title/heading is exactly "Case Feedback" |
+| Bold section headings | 3 | "Case One", "Case Two", "Case Three" appear in bold |
+| 1.5 line spacing | 3 | All body text uses 1.5 line spacing |
+| Under 5 pages | 3 | Total document length is less than 5 pages |
+| Bulleted/numbered lists | 3 | Feedback items are presented as lists, not plain paragraphs |
+| Bold labels | 2 | Original/Explanation/Alternative labels are visually distinguished with bold formatting |
+
+### 4.5. Usefulness (20 points)
+
+| Criterion | Points | Description |
+|-----------|--------|-------------|
+| Actionable feedback | 5 | Feedback gives the colleague specific, actionable guidance on how to improve |
+| Professional tone | 5 | No insulting, sarcastic, or demeaning language about the colleague |
+| Alternatives are substantively different | 5 | Each alternative is meaningfully different from its original (not just minor word swaps) |
+| Suitable for intended audience | 5 | Content is written for a peer within a banking organization to the appropriate level of detail and professionalism |
+
 ---
 
-## 4. Risk Mitigation Strategies
+## 5. Risk Mitigation Strategies
 
 - **Hallucination:** Guarded by Agent 3's strict character-by-character validation of transcript statements.
 - **Data Privacy:** Explicit prompts prohibit Agent 2 from inventing new PII not already present in the source text.
-- **Runaway Token Costs:** The automated verification loop is hard-capped at a configurable variable (`MAX_VERIFICATION_RETRIES`, default: 2).
+- **Runaway Token Costs:** The automated verification loop is hard-capped at a configurable variable (`MAX_VERIFICATION_RETRIES`, default: 5).
 - **Formatting Variability:** Instead of asking the LLM to write markdown or attempt to construct binary files, formatting is handled entirely by predictable Python logic (`python-docx`) in Agent 4.
+
+## 6. Potential Next Steps
+
+To improve the robustness, safety, and functionality of the system, the following enhancements could be explored:
+
+
+- **Context & Policy Integration:** Provide the AI with a retrieval-augmented generation (RAG) knowledge base containing organizational-specific policies, escalation protocols, and cultural norms to improve contextual understanding.
+
+- **PII Redaction Pipeline:** Implement an explicit Data Loss Prevention (DLP) or anonymization step before sending transcripts to the OpenAI API to ensure customer privacy and compliance.
+
+- **Few Shot Examples** Providing Agent 2 with few-shot examples of high-scoring feedback could address the self-correction ceiling observed in the verification loop.
+
+- **Manage Token usage, retry costs and Latency** Logging per-agent token usage, latency, and retry costs per case would enable evidence-based optimisation decisions for production deployment.
+
+- **Tone & Nuance Fine-Tuning:** Adjust the Quality Verifier prompts to handle edge cases better, such as recognizing when an apology by a representative is contextually appropriate rather than overly deferential.
+
+
+
+## 7. How to Run the Project
+
+Follow these steps to set up and run the system locally:
+
+**Prerequisites:**
+- Python 3.8+ 
+- An active OpenAI API Key
+
+**Setup Instructions:**
+1. **Clone the repository and navigate to the directory:**
+   ```bash
+   cd "Gen AI Assignment"
+   ```
+
+2. **Create and activate a virtual environment:**
+   ```bash
+   python -m venv venv
+   # On Windows:
+   venv\Scripts\activate
+   # On macOS/Linux:
+   source venv/bin/activate
+   ```
+
+3. **Install the required dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure Environment Variables:**
+   - Create a `.env` file in the root directory if it doesn't exist.
+   - Add your OpenAI API key to the `.env` file:
+     ```env
+     OPENAI_API_KEY=your_openai_api_key_here
+     ```
+
+5. **Run the Application:**
+   ```bash
+   python main.py
+   ```
+   
+   The console will output the progress of the multi-agent pipeline. Once completed, a log file (`notes_log.md`) and the final output document (`Case Feedback.docx`) will be generated in the root directory.
+
+
